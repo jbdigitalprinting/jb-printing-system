@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JB Digital Printing — Business System</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--primary:#2563eb;--primary-dark:#1d4ed8;--primary-light:#dbeafe;--accent:#f97316;--accent-dark:#ea580c;--accent-light:#ffedd5;--success:#16a34a;--danger:#dc2626;--warning:#d97706;--warning-light:#fef3c7;--dark:#0f172a;--gray-700:#334155;--gray-600:#475569;--gray-500:#64748b;--gray-400:#94a3b8;--gray-300:#cbd5e1;--gray-200:#e2e8f0;--gray-100:#f1f5f9;--gray-50:#f8fafc;--white:#fff;--radius:10px;--radius-sm:6px;--shadow:0 2px 12px rgba(0,0,0,0.06);--shadow-lg:0 8px 30px rgba(0,0,0,0.1);--sidebar-w:220px}
@@ -410,10 +412,74 @@ const STATUS_LABELS = {pending:'Pending', 'in-progress':'In Progress', completed
 const STATUS_TAGS = {pending:'tag-pending', 'in-progress':'tag-progress', completed:'tag-completed', delivered:'tag-delivered', planning:'tag-planning', 'on-hold':'tag-hold', cancelled:'tag-cancelled'};
 
 const STORE_KEY = 'jbPrintingSystem';
+const FIRESTORE_DOC = 'businessData/main';
 
-function getData() {
+// Firebase initialization
+let db, dataListener, lastFirestoreUpdate = 0;
+let pendingSave = false;
+
+function initFirebase() {
+  const firebaseConfig = {
+    apiKey: "AIzaSyBIGsv78X8iNm_-BtECfsE9C_DI2JIpeqY",
+    authDomain: "jb-digitalprinting.firebaseapp.com",
+    projectId: "jb-digitalprinting",
+    storageBucket: "jb-digitalprinting.firebasestorage.app",
+    messagingSenderId: "862348945523",
+    appId: "1:862348945523:web:c97457fc9daac37fec2206"
+  };
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+  // Start listening for remote changes
+  startFirestoreListener();
+}
+
+function startFirestoreListener() {
+  if (dataListener) return;
+  dataListener = db.doc(FIRESTORE_DOC).onSnapshot(function(snap) {
+    if (snap.exists) {
+      const remote = snap.data();
+      lastFirestoreUpdate = Date.now();
+      // Merge into localStorage (remote wins)
+      localStorage.setItem(STORE_KEY, JSON.stringify(remote));
+      // Re-render current view if open
+      const active = document.querySelector('.section.active');
+      if (active) {
+        const name = active.id ? active.id.replace('section-','') : '';
+        if (name === 'dashboard') renderDashboard();
+        else if (name === 'calendar') renderCalendar();
+        else if (name === 'orders') renderOrders();
+        else if (name === 'inventory') renderInventory();
+        else if (name === 'projects') renderProjects();
+      }
+    } else {
+      // First time — push local data to Firestore
+      const local = getLocalData();
+      db.doc(FIRESTORE_DOC).set(local).catch(function(e){ console.warn('Firestore init:', e); });
+    }
+  }, function(err) {
+    console.warn('Firestore listener error:', err);
+  });
+}
+
+function getLocalData() {
   try { const d = localStorage.getItem(STORE_KEY); if(d) return JSON.parse(d); } catch(e){}
   return { income:[], expenses:[], orders:[], inventory:[], projects:[], customServices:[], customExpenseCats:[], stockMovements:[], logoConfig:{type:'text',initials:'JB',name:'JB Digital Printing',subname:'Business System'} };
+}
+
+function getData() {
+  return getLocalData();
+}
+
+function saveData(d) {
+  localStorage.setItem(STORE_KEY, JSON.stringify(d));
+  // Throttle Firestore writes to 1 per second max
+  const now = Date.now();
+  if (!pendingSave && now - lastFirestoreUpdate > 1000) {
+    pendingSave = true;
+    db.doc(FIRESTORE_DOC).set(d).then(function(){ pendingSave = false; }).catch(function(e){
+      console.warn('Firestore save:', e); pendingSave = false;
+    });
+  }
 }
 
 // Combine built-in + custom services/categories
@@ -451,8 +517,6 @@ function expenseCatOptions(selected){
   return getExpenseCats().map(c=>'<option value="'+c+'"'+(selected===c?' selected':'')+'>'+c+'</option>').join('')+
     '<option value="__other__">➕ Other (custom)...</option>';
 }
-function saveData(d) { localStorage.setItem(STORE_KEY, JSON.stringify(d)); }
-
 function genId() { return Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,6); }
 function today() { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function fmtDate(iso){const p=iso.split('-');const ms=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return ms[parseInt(p[1])-1]+' '+parseInt(p[2])+', '+p[0];}
@@ -1592,6 +1656,7 @@ document.querySelectorAll('.nav-item').forEach(el=>{
 });
 
 renderLogo();
+initFirebase();
 initCalendar();
 initReports();
 renderDashboard();
