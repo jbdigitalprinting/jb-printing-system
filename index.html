@@ -1341,7 +1341,6 @@ function projDetail(p){
       html+=`<tr><td>${i.particular}</td><td>${i.qty}</td><td>${fmtCurrency(i.amount)}</td><td style="font-weight:600">${fmtCurrency(i.amount*i.qty)}</td>
         <td><button class="btn btn-xs btn-danger" onclick="deleteProjOrderItem('${p.id}','${i.id}')">✕</button></td></tr>`;
     });
-    html+=`<tr style="font-weight:700;background:var(--gray-50)"><td colspan="2"><strong>Total Order</strong></td><td></td><td>${fmtCurrency(itemsTotal)}</td><td></td></tr>`;
     html+=`</tbody></table></div>`;
   } else {
     html+=`<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:.85rem;margin-bottom:12px">No order items yet</div>`;
@@ -1372,11 +1371,13 @@ function projDetail(p){
     html+=`<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:.85rem;margin-bottom:8px">No project expenses yet</div>`;
   }
   
-  const grandTotal=itemsTotal+expsTotal;
-  html+=`<div style="margin-top:12px;padding:12px;background:var(--gray-50);border-radius:var(--radius-sm);display:flex;justify-content:space-around;text-align:center">
-    <div><div style="font-size:.75rem;color:var(--gray-500)">Order Total</div><div style="font-weight:700;font-size:1.1rem;color:var(--primary)">${fmtCurrency(itemsTotal)}</div></div>
-    <div><div style="font-size:.75rem;color:var(--gray-500)">Expenses</div><div style="font-weight:700;font-size:1.1rem;color:var(--danger)">${fmtCurrency(expsTotal)}</div></div>
-    <div><div style="font-size:.75rem;color:var(--gray-500)">Grand Total</div><div style="font-weight:700;font-size:1.1rem">${fmtCurrency(grandTotal)}</div></div>
+  const profit=itemsTotal-expsTotal;
+  const profitMargin=itemsTotal>0?((profit/itemsTotal)*100).toFixed(1):'—';
+  const profitColor=profit>=0?'var(--success)':'var(--danger)';
+  html+=`<div style="margin-top:12px;padding:12px;background:var(--gray-50);border-radius:var(--radius-sm);display:flex;justify-content:space-around;text-align:center;flex-wrap:wrap;gap:8px">
+    <div><div style="font-size:.75rem;color:var(--gray-500)">📋 Income</div><div style="font-weight:700;font-size:1.1rem;color:var(--primary)">${fmtCurrency(itemsTotal)}</div></div>
+    <div><div style="font-size:.75rem;color:var(--gray-500)">💰 Expenses</div><div style="font-weight:700;font-size:1.1rem;color:var(--danger)">${fmtCurrency(expsTotal)}</div></div>
+    <div style="border-left:1px solid var(--gray-200);padding-left:12px"><div style="font-size:.75rem;color:var(--gray-500)">📊 Profit</div><div style="font-weight:700;font-size:1.1rem;color:${profitColor}">${fmtCurrency(profit)} <span style="font-weight:400;font-size:.8rem">(${profitMargin}${profitMargin!=='—'?'%':''})</span></div></div>
   </div>`;
   
   document.getElementById('modal-day-body').innerHTML=html;
@@ -1466,6 +1467,9 @@ function renderProjects(){
     const pctClass=pct>90?'red':pct>70?'yellow':'green';
     const orderTotal=(p.orderItems||[]).reduce((s,i)=>s+(i.amount||0)*(i.qty||1),0);
     const expTotal=(p.projectExpenses||[]).reduce((s,e)=>s+(e.amount||0),0);
+    const profit=orderTotal-expTotal;
+    const profitMargin=orderTotal>0?((profit/orderTotal)*100).toFixed(1):'—';
+    const profitClass=profit>=0?'green':'red';
     
     return `<div class="project-card">
       <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
@@ -1485,9 +1489,10 @@ function renderProjects(){
         <div style="text-align:right;font-size:.72rem;color:var(--gray-400)">${pct}% used</div>
       </div>`:''}
       ${(orderTotal>0||expTotal>0)?`
-      <div style="display:flex;gap:12px;font-size:.78rem;margin-bottom:6px">
-        ${orderTotal>0?`<span>📋 Orders: <strong>${fmtCurrency(orderTotal)}</strong></span>`:''}
+      <div style="display:flex;gap:12px;font-size:.78rem;margin-bottom:6px;flex-wrap:wrap">
+        ${orderTotal>0?`<span>📋 Income: <strong>${fmtCurrency(orderTotal)}</strong></span>`:''}
         ${expTotal>0?`<span>💰 Expenses: <strong>${fmtCurrency(expTotal)}</strong></span>`:''}
+        <span style="border-left:2px solid var(--gray-200);padding-left:8px;font-weight:600;color:var(--${profitClass})">📊 Profit: <strong>${fmtCurrency(profit)}</strong> <span style="font-weight:400;font-size:.72rem">(${profitMargin}${profitMargin!=='—'?'%':''})</span></span>
       </div>`:''}
       ${p.milestones?`<div style="font-size:.78rem;color:var(--gray-500);margin-bottom:6px">📍 ${p.milestones}</div>`:''}
       <div style="font-size:.78rem;color:var(--gray-400);margin-bottom:8px">
