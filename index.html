@@ -1288,7 +1288,7 @@ function projDetail(p){
   const proj=d.projects.find(x=>x.id===p.id)||p;
   const items=proj.orderItems||[];
   const exps=proj.projectExpenses||[];
-  const itemsTotal=items.reduce((s,i)=>s+(i.amount||0),0);
+  const itemsTotal=items.reduce((s,i)=>s+(i.amount||0)*(i.qty||1),0);
   const expsTotal=exps.reduce((s,e)=>s+(e.amount||0),0);
   const budget=proj.budget||0;
   const spent=(proj.spent||0)+expsTotal;
