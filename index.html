@@ -1375,7 +1375,7 @@ function projDetail(p){
   const profitMargin=itemsTotal>0?((profit/itemsTotal)*100).toFixed(1):'—';
   const profitColor=profit>=0?'var(--success)':'var(--danger)';
   html+=`<div style="margin-top:12px;padding:12px;background:var(--gray-50);border-radius:var(--radius-sm);display:flex;justify-content:space-around;text-align:center;flex-wrap:wrap;gap:8px">
-    <div><div style="font-size:.75rem;color:var(--gray-500)">📋 Income</div><div style="font-weight:700;font-size:1.1rem;color:var(--primary)">${fmtCurrency(itemsTotal)}</div></div>
+    <div><div style="font-size:.75rem;color:var(--gray-500)">📋 Total Amount</div><div style="font-weight:700;font-size:1.1rem;color:var(--primary)">${fmtCurrency(itemsTotal)}</div></div>
     <div><div style="font-size:.75rem;color:var(--gray-500)">💰 Expenses</div><div style="font-weight:700;font-size:1.1rem;color:var(--danger)">${fmtCurrency(expsTotal)}</div></div>
     <div style="border-left:1px solid var(--gray-200);padding-left:12px"><div style="font-size:.75rem;color:var(--gray-500)">📊 Profit</div><div style="font-weight:700;font-size:1.1rem;color:${profitColor}">${fmtCurrency(profit)} <span style="font-weight:400;font-size:.8rem">(${profitMargin}${profitMargin!=='—'?'%':''})</span></div></div>
   </div>`;
