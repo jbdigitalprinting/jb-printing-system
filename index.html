@@ -2229,7 +2229,24 @@ function handleScrollAnimations() {
 
 
 
-// ===== INIT =====
+// ===== // ===== LOGO =====
+function renderLogo() {
+  const d = getData();
+  const icon = document.getElementById('logoIcon');
+  const img = document.getElementById('logoImage');
+  const text = document.getElementById('logoText');
+  if (icon && img && text) {
+    if (d.logoImage) {
+      icon.style.display = 'none'; text.style.display = 'none';
+      img.src = d.logoImage; img.style.display = 'inline-block';
+    } else {
+      icon.style.display = 'flex'; text.style.display = 'block';
+      img.style.display = 'none';
+    }
+  }
+}
+
+INIT =====
 
 function init() {
 
