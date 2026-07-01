@@ -480,14 +480,17 @@ function genCustomId() {
 function renderProducts() {
   const grid = document.getElementById('productsGrid');
   const all = getAllProducts();
-  grid.innerHTML = all.map(p => `
-    <div class="product-card" onclick="startOrder('${p.id}')">
-      <div class="product-icon">${p.icon}</div>
-      <div class="product-name">${p.name}</div>
-      <div class="product-price">₱${p.price}</div>
-      <div class="product-desc">per ${p.unit}</div>
-    </div>
-  `).join('');
+  grid.innerHTML = all.map(p => {
+    const iconHtml = p.imageData
+      ? '<img src="' + p.imageData + '" alt="' + p.name + '" style="width:48px;height:48px;object-fit:cover;border-radius:8px;margin-bottom:4px">'
+      : '<div class="product-icon">' + (p.icon || '\u{1F4C4}') + '</div>';
+    return '<div class="product-card" onclick="startOrder(\'' + p.id + '\')">'
+      + iconHtml
+      + '<div class="product-name">' + p.name + '</div>'
+      + '<div class="product-price">\u20B1' + p.price + '</div>'
+      + '<div class="product-desc">per ' + p.unit + '</div>'
+      + '</div>';
+  }).join('');
 }
 
 // ============ ORDER FORM ============
