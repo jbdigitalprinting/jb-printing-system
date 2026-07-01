@@ -1209,7 +1209,9 @@ function updateContactInfo() {
     if (text.includes('📞')) li.innerHTML = '📞 ' + (d.phone || '0900-000-0000');
     if (text.includes('🕐')) li.innerHTML = '🕐 ' + (d.bizHours || 'Mon - Sat: 8:00 AM - 6:00 PM');
   });
-}// ===== ADMIN SERVICE MANAGEMENT =====
+}
+
+// ===== ADMIN SERVICE MANAGEMENT =====
 function renderServicesManagement() {
   const d = getData();
   const all = getAllServices();
