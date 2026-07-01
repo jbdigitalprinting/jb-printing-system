@@ -596,7 +596,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
       <div class="contact-info fade-in-left">
         <a href="https://www.facebook.com/jbdigitalprinting" target="_blank" class="contact-card" style="text-decoration:none;color:inherit">
           <div class="contact-icon pink">📘</div>
-          <div><div class="contact-label">Facebook Page</div><div class="contact-value">@jbdigitalprinting</div></div>
+          <div><div class="contact-label">Facebook Page</div><div class="contact-value"><span id="contactFbDisplay">@jbdigitalprinting</span></div></div>
         </a>
         <a href="tel:+639000000000" class="contact-card" style="text-decoration:none;color:inherit">
           <div class="contact-icon yellow">📞</div>
@@ -1174,13 +1174,35 @@ function saveSettings() {
 // ===== UPDATE CONTACT INFO =====
 function updateContactInfo() {
   const d = getData();
-  const hp = document.getElementById('headerPhone');
-  if (hp) hp.textContent = '\ud83d\udcde ' + (d.phone || '0900-000-0000');
-  const ids = ['contactPhone','contactAddress','contactHours'];
-  const vals = [d.phone||'0900-000-0000', d.address||'Tigaon, Camarines Sur', d.bizHours||'Mon - Sat: 8:00 AM - 6:00 PM'];
-  ids.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.textContent=vals[i];});
-}
-// ===== ADMIN SERVICE MANAGEMENT =====
+  // Update phone - find the contact-card with Call/Text
+  const cards = document.querySelectorAll('.contact-card');
+  cards.forEach(card => {
+    const label = card.querySelector('.contact-label');
+    if (!label) return;
+    const val = card.querySelector('.contact-value');
+    if (!val) return;
+    if (label.textContent.includes('Call') || label.textContent.includes('Text')) {
+      val.innerHTML = '<span id="contactPhone">' + (d.phone || '0900-000-0000') + '</span>';
+    }
+    if (label.textContent.includes('Location') || label.textContent.includes('Address')) {
+      val.innerHTML = '<span id="contactAddress">' + (d.address || 'Tigaon, Camarines Sur') + '</span>';
+    }
+    if (label.textContent.includes('Hours') || label.textContent.includes('Business')) {
+      val.innerHTML = '<span id="contactHours">' + (d.bizHours || 'Mon - Sat: 8:00 AM - 6:00 PM') + '</span>';
+    }
+    if (label.textContent.includes('Facebook') || label.textContent.includes('FB') || label.textContent.includes('Page')) {
+      val.innerHTML = '<span id="contactFbDisplay">' + (d.fbPage ? d.fbPage.replace('https://facebook.com/','@') : '@jbdigitalprinting') + '</span>';
+    }
+  });
+  // Update footer
+  const footerItems = document.querySelectorAll('.footer-links li');
+  footerItems.forEach(li => {
+    const text = li.textContent || '';
+    if (text.includes('📍')) li.innerHTML = '📍 ' + (d.address || 'Tigaon, Camarines Sur');
+    if (text.includes('📞')) li.innerHTML = '📞 ' + (d.phone || '0900-000-0000');
+    if (text.includes('🕐')) li.innerHTML = '🕐 ' + (d.bizHours || 'Mon - Sat: 8:00 AM - 6:00 PM');
+  });
+}// ===== ADMIN SERVICE MANAGEMENT =====
 function renderServicesManagement() {
   const d = getData();
   const all = getAllServices();
