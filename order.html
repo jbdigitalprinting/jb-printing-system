@@ -326,6 +326,7 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:var(--bg
       <h2 style="color:var(--primary);font-size:18px">📋 All Orders</h2>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-sm btn-outline" onclick="adminLogout()">🚪 Logout</button>
+        <button class="btn btn-sm btn-outline" onclick="openManageProducts()">📦 Products</button>
         <button class="btn btn-sm btn-outline" onclick="openSettings()">⚙️ Settings</button>
       </div>
     </div>
@@ -387,6 +388,35 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:var(--bg
   </div>
 </div>
 
+<!-- MANAGE PRODUCTS MODAL -->
+<div class="modal-overlay" id="productsOverlay" onclick="if(event.target===this)closeManageProducts()">
+  <div class="modal" style="max-width:500px">
+    <h3>📦 Manage Products</h3>
+    <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">
+      Built-in products cannot be deleted. Custom products (★) you added can be removed anytime.
+    </p>
+
+    <div style="border:2px dashed var(--gray-300);border-radius:10px;padding:14px;margin-bottom:14px">
+      <h4 style="font-size:14px;margin-bottom:10px;color:var(--primary)">➕ Add New Product</h4>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <input type="text" id="mpName" placeholder="Product name" style="padding:8px;border:2px solid var(--gray-300);border-radius:6px;font-size:13px">
+        <input type="text" id="mpIcon" placeholder="Icon (e.g., 🖨️)" maxlength="4" style="padding:8px;border:2px solid var(--gray-300);border-radius:6px;font-size:13px">
+        <input type="number" id="mpPrice" placeholder="Price" min="0" step="0.01" style="padding:8px;border:2px solid var(--gray-300);border-radius:6px;font-size:13px">
+        <input type="text" id="mpUnit" placeholder="Unit (e.g., per piece)" style="padding:8px;border:2px solid var(--gray-300);border-radius:6px;font-size:13px">
+      </div>
+      <button class="btn btn-sm btn-primary" onclick="addCustomProduct()" style="margin-top:8px">➕ Add Product</button>
+      <span id="mpError" style="color:var(--danger);font-size:12px;display:none;margin-left:8px"></span>
+    </div>
+
+    <h4 style="font-size:14px;margin-bottom:8px;color:var(--text)">Current Products</h4>
+    <div id="mpList" style="max-height:300px;overflow-y:auto"></div>
+
+    <div class="modal-btns" style="margin-top:12px">
+      <button class="btn btn-outline btn-sm" onclick="closeManageProducts()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -402,7 +432,7 @@ function getData() {
     const d = JSON.parse(localStorage.getItem(STORE_KEY));
     if (d) return d;
   } catch(e) {}
-  return { orders: [], nextNum: 1, adminPin: '1234', phone: '0900-000-0000' };
+  return { orders: [], nextNum: 1, adminPin: '1234', phone: '0900-000-0000', customProducts: [] };
 }
 function saveData(d) {
   localStorage.setItem(STORE_KEY, JSON.stringify(d));
@@ -426,9 +456,23 @@ const PRODUCTS = [
   { id: 'mug', name: 'Mug Printing', icon: '☕', price: 180, unit: 'per piece', sizes: ['11oz', '15oz'] },
 ];
 
+function getAllProducts() {
+  const d = getData();
+  const cust = (d.customProducts || []).map(c => ({
+    ...c,
+    isCustom: true
+  }));
+  return [...PRODUCTS, ...cust];
+}
+
+function genCustomId() {
+  return 'cust_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,6);
+}
+
 function renderProducts() {
   const grid = document.getElementById('productsGrid');
-  grid.innerHTML = PRODUCTS.map(p => `
+  const all = getAllProducts();
+  grid.innerHTML = all.map(p => `
     <div class="product-card" onclick="startOrder('${p.id}')">
       <div class="product-icon">${p.icon}</div>
       <div class="product-name">${p.name}</div>
@@ -441,12 +485,13 @@ function renderProducts() {
 // ============ ORDER FORM ============
 function populateProductDropdown() {
   const sel = document.getElementById('ordProduct');
+  const all = getAllProducts();
   sel.innerHTML = '<option value="">— Select Product —</option>' +
-    PRODUCTS.map(p => `<option value="${p.id}">${p.name} (₱${p.price}/${p.unit})</option>`).join('');
+    all.map(p => `<option value="${p.id}">${p.name} (₱${p.price}/${p.unit})${p.isCustom ? ' ★' : ''}</option>`).join('');
 }
 
 function getProduct(id) {
-  return PRODUCTS.find(p => p.id === id);
+  return getAllProducts().find(p => p.id === id);
 }
 
 function updateOrderSummary() {
@@ -822,6 +867,88 @@ function switchTab(tab) {
       renderOrders();
     }
   }
+}
+
+// ============ MANAGE PRODUCTS ============
+function openManageProducts() {
+  renderManageProductsList();
+  document.getElementById('mpError').style.display = 'none';
+  document.getElementById('mpName').value = '';
+  document.getElementById('mpIcon').value = '';
+  document.getElementById('mpPrice').value = '';
+  document.getElementById('mpUnit').value = '';
+  document.getElementById('productsOverlay').classList.add('show');
+}
+function closeManageProducts() {
+  document.getElementById('productsOverlay').classList.remove('show');
+  renderProducts();
+  populateProductDropdown();
+}
+
+function renderManageProductsList() {
+  const all = getAllProducts();
+  const d = getData();
+  const container = document.getElementById('mpList');
+
+  container.innerHTML = all.map(p => {
+    const isCustom = p.isCustom;
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--gray-200);gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+          <span style="font-size:20px">${p.icon || '📄'}</span>
+          <div>
+            <div style="font-weight:600;font-size:13px">${p.name}${isCustom ? ' <span style="color:var(--accent);font-size:11px">★</span>' : ''}</div>
+            <div style="font-size:11px;color:var(--text-light)">₱${p.price} / ${p.unit}</div>
+          </div>
+        </div>
+        ${isCustom ? `<button class="btn btn-sm btn-danger" onclick="deleteCustomProduct('${p.id}')">🗑️</button>` :
+        '<span style="font-size:11px;color:var(--text-light)">built-in</span>'}
+      </div>
+    `;
+  }).join('');
+}
+
+function addCustomProduct() {
+  const name = document.getElementById('mpName').value.trim();
+  const icon = document.getElementById('mpIcon').value.trim() || '📄';
+  const price = parseFloat(document.getElementById('mpPrice').value);
+  const unit = document.getElementById('mpUnit').value.trim();
+  const err = document.getElementById('mpError');
+
+  if (!name) { err.textContent = 'Product name is required'; err.style.display = 'inline'; return; }
+  if (isNaN(price) || price <= 0) { err.textContent = 'Enter a valid price'; err.style.display = 'inline'; return; }
+  if (!unit) { err.textContent = 'Unit is required (e.g. per piece)'; err.style.display = 'inline'; return; }
+
+  err.style.display = 'none';
+  const d = getData();
+  d.customProducts.push({
+    id: genCustomId(),
+    name: name,
+    icon: icon,
+    price: price,
+    unit: unit
+  });
+  saveData(d);
+  renderManageProductsList();
+  showToast('✅ ' + name + ' added!', 'success');
+
+  // Clear form
+  document.getElementById('mpName').value = '';
+  document.getElementById('mpIcon').value = '';
+  document.getElementById('mpPrice').value = '';
+  document.getElementById('mpUnit').value = '';
+}
+
+function deleteCustomProduct(id) {
+  const d = getData();
+  const product = d.customProducts.find(p => p.id === id);
+  if (!product) return;
+  showModal('Delete "' + product.name + '"?', 'This custom product will be permanently removed.', function() {
+    d.customProducts = d.customProducts.filter(p => p.id !== id);
+    saveData(d);
+    renderManageProductsList();
+    showToast('🗑️ ' + product.name + ' deleted', 'success');
+  });
 }
 
 // ============ INIT ============
