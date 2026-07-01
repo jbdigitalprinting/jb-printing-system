@@ -60,6 +60,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 .nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--white)}
 .nav-logo-icon{width:40px;height:40px;background:linear-gradient(135deg,var(--yellow),var(--yellow-dark));border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;color:var(--black)}
 .nav-logo-text{font-weight:800;font-size:18px;letter-spacing:-.5px}
+.nav-logo img{max-height:42px;width:auto;border-radius:6px;object-fit:contain}
 .nav-logo-text span{color:var(--yellow)}
 .nav-links{display:flex;align-items:center;gap:4px;list-style:none}
 .nav-links a{color:var(--gray-400);text-decoration:none;font-size:13px;font-weight:500;padding:8px 16px;border-radius:var(--radius-sm);transition:var(--transition);position:relative}
@@ -369,8 +370,9 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 <nav class="navbar" id="navbar">
   <div class="nav-inner">
     <a href="#" class="nav-logo">
-      <div class="nav-logo-icon">JB</div>
-      <div class="nav-logo-text">JB <span>Digital Printing</span></div>
+      <div class="nav-logo-icon" id="logoIcon">JB</div>
+      <img id="logoImage" style="display:none;height:40px;width:auto;border-radius:6px;object-fit:contain" alt="JB Digital Printing">
+      <div class="nav-logo-text" id="logoText">JB <span>Digital Printing</span></div>
     </a>
     <ul class="nav-links" id="navLinks">
       <li><a href="#services" class="active">Services</a></li>
@@ -722,7 +724,7 @@ function getData() {
     const d = JSON.parse(localStorage.getItem(STORE_KEY));
     if (d) return d;
   } catch(e) {}
-  return { orders: [], nextNum: 1, adminPin: '1234', phone: '0900-000-0000', customServices: [], hiddenServices: [], serviceOverrides: {}, fbPage: 'https://facebook.com/jbdigitalprinting', address: 'Tigaon, Camarines Sur', bizHours: '<span id="contactHours">Mon - Sat: 8:00 AM - 6:00 PM</span>' };
+  return { orders: [], nextNum: 1, adminPin: '1234', phone: '0900-000-0000', customServices: [], hiddenServices: [], serviceOverrides: {}, fbPage: 'https://facebook.com/jbdigitalprinting', address: 'Tigaon, Camarines Sur', bizHours: 'Mon - Sat: 8:00 AM - 6:00 PM', logoImage: null };
 }
 function saveData(d) { localStorage.setItem(STORE_KEY, JSON.stringify(d)); }
 
@@ -1145,12 +1147,34 @@ function renderSettings() {
     + '<textarea id="setAddress" rows="2" style="width:100%;padding:10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;font-family:inherit">' + (d.address || 'Tigaon, Camarines Sur') + '</textarea></div>'
     + '<div style="margin-bottom:16px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:var(--gray-700)">\ud83d\udd50 Business Hours</label>'
     + '<input id="setHours" value="' + (d.bizHours || '<span id="contactHours">Mon - Sat: 8:00 AM - 6:00 PM</span>') + '" style="width:100%;padding:10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;font-family:inherit"></div>'
-    + '<div style="border-top:2px solid var(--gray-200);padding-top:16px;margin-top:8px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:var(--pink)">\ud83d\udd11 Change Admin PIN</label>'
+    + '<div style="margin-bottom:16px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:var(--gray-700)">\ud83d\udcf7 Upload Logo</label><div style="position:relative;display:inline-block;width:100%"><input type="file" id="setLogo" accept="image/png,image/jpeg,image/gif,image/webp" style="position:absolute;opacity:0;width:100%;height:100%;cursor:pointer;top:0;left:0" onchange="previewLogo()"><div style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:2px dashed var(--gray-300);border-radius:6px;font-size:12px;color:var(--gray-500);cursor:pointer">\ud83d\udcf7 Choose logo image</div></div><div style="display:flex;align-items:center;gap:8px;margin-top:6px"><img id="setLogoPreview" style="display:none;height:40px;border-radius:4px;border:1px solid var(--gray-200)"><button class="btn btn-sm btn-outline" onclick="removeLogo()" id="removeLogoBtn" style="display:none;font-size:11px">\u2716 Remove</button></div></div>' + '<div style="border-top:2px solid var(--gray-200);padding-top:16px;margin-top:8px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:var(--pink)">\ud83d\udd11 Change Admin PIN</label>'
     + '<input id="setPin" type="password" placeholder="New 4-6 digit PIN" maxlength="6" style="width:100%;padding:10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;font-family:inherit"></div>'
     + '<button class="btn btn-yellow" onclick="saveSettings()" style="margin-top:16px;width:100%">\ud83d\udcbe Save Settings</button>'
     + '<div id="settingsMsg" style="font-size:13px;color:var(--success);margin-top:8px;display:none"></div>'
     + '</div></div>';
 }
+function previewLogo() {
+  const f = document.getElementById('setLogo').files[0];
+  if (!f) return;
+  if (f.size > 1024*1024) { showToast('Max 1MB','error'); document.getElementById('setLogo').value = ''; return; }
+  const r = new FileReader();
+  r.onload = function(e) {
+    document.getElementById('setLogoPreview').src = e.target.result;
+    document.getElementById('setLogoPreview').style.display = 'block';
+    document.getElementById('removeLogoBtn').style.display = 'inline-block';
+  };
+  r.readAsDataURL(f);
+}
+function removeLogo() {
+  const d = getData();
+  d.logoImage = null; saveData(d);
+  document.getElementById('setLogo').value = '';
+  document.getElementById('setLogoPreview').style.display = 'none';
+  document.getElementById('removeLogoBtn').style.display = 'none';
+  renderLogo();
+  showToast('Logo removed','success');
+}
+
 function saveSettings() {
   const d = getData();
   const fb = document.getElementById('setFb').value.trim();
@@ -1158,15 +1182,25 @@ function saveSettings() {
   const address = document.getElementById('setAddress').value.trim();
   const hours = document.getElementById('setHours').value.trim();
   const newPin = document.getElementById('setPin').value.trim();
+  const logoFile = document.getElementById('setLogo');
   if (fb) d.fbPage = fb;
   if (phone) d.phone = phone;
   if (address) d.address = address;
   if (hours) d.bizHours = hours;
   if (newPin) d.adminPin = newPin;
+  if (logoFile && logoFile.files.length) {
+    const r = new FileReader();
+    r.onload = function(e) { d.logoImage = e.target.result; finishSave(d); };
+    r.readAsDataURL(logoFile.files[0]);
+  } else { finishSave(d); }
+}
+function finishSave(d) {
   saveData(d);
+  renderLogo();
   updateContactInfo();
+  document.getElementById('setLogo').value = '';
   const msg = document.getElementById('settingsMsg');
-  msg.textContent = newPin ? '\u2705 Settings saved! PIN changed.' : '\u2705 Settings saved!';
+  msg.textContent = '\u2705 Settings saved!';
   msg.style.display = 'block';
   document.getElementById('setPin').value = '';
   setTimeout(() => { msg.style.display = 'none'; }, 3000);
