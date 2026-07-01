@@ -600,15 +600,15 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
         </a>
         <a href="tel:+639000000000" class="contact-card" style="text-decoration:none;color:inherit">
           <div class="contact-icon yellow">📞</div>
-          <div><div class="contact-label">Call / Text</div><div class="contact-value">0900-000-0000</div></div>
+          <div><div class="contact-label">Call / Text</div><div class="contact-value"><span id="contactPhone">0900-000-0000</span></div></div>
         </a>
         <div class="contact-card">
           <div class="contact-icon dark">📍</div>
-          <div><div class="contact-label">Location</div><div class="contact-value">Tigaon, Camarines Sur</div></div>
+          <div><div class="contact-label">Location</div><div class="contact-value"><span id="contactAddress">Tigaon, Camarines Sur</span></div></div>
         </div>
         <div class="contact-card">
           <div class="contact-icon dark">🕐</div>
-          <div><div class="contact-label">Business Hours</div><div class="contact-value">Mon - Sat: 8:00 AM - 6:00 PM</div></div>
+          <div><div class="contact-label">Business Hours</div><div class="contact-value"><span id="contactHours">Mon - Sat: 8:00 AM - 6:00 PM</span></div></div>
         </div>
         <div class="contact-card">
           <div class="contact-icon pink">💬</div>
@@ -717,7 +717,7 @@ function getData() {
     const d = JSON.parse(localStorage.getItem(STORE_KEY));
     if (d) return d;
   } catch(e) {}
-  return { orders: [], nextNum: 1, adminPin: '1234', phone: '0900-000-0000', customServices: [], hiddenServices: [], serviceOverrides: {} };
+  return { orders: [], nextNum: 1, adminPin: '1234', phone: '0900-000-0000', customServices: [], hiddenServices: [], serviceOverrides: {}, fbPage: 'https://facebook.com/jbdigitalprinting', address: 'Tigaon, Camarines Sur', bizHours: '<span id="contactHours">Mon - Sat: 8:00 AM - 6:00 PM</span>' };
 }
 function saveData(d) { localStorage.setItem(STORE_KEY, JSON.stringify(d)); }
 
@@ -1019,6 +1019,7 @@ function switchAdminTab(tab, btn) {
   document.getElementById('admin' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
   if (tab === 'analytics') renderAnalytics();
   if (tab === 'services') renderServicesManagement();
+  if (tab === 'settings') renderSettings();
 }
 
 function exportOrders() {
@@ -1122,6 +1123,58 @@ function init() {
 
 document.addEventListener('DOMContentLoaded', init);
 
+
+// ===== ADMIN SETTINGS =====
+function renderSettings() {
+  const d = getData();
+  const el = document.getElementById('settingsContent');
+  el.innerHTML = '<div style="max-width:500px;margin:0 auto">'
+    + '<h3 style="font-size:18px;font-weight:800;margin-bottom:16px">\u2699 Shop Settings</h3>'
+    + '<div style="background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:24px">'
+    + '<div style="margin-bottom:16px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:var(--gray-700)">\ud83d\udcd6 Facebook Page URL</label>'
+    + '<input id="setFb" value="' + (d.fbPage || 'https://facebook.com/jbdigitalprinting') + '" style="width:100%;padding:10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;font-family:inherit"></div>'
+    + '<div style="margin-bottom:16px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:var(--gray-700)">\ud83d\udcde Phone Number</label>'
+    + '<input id="setPhone" value="' + (d.phone || '0900-000-0000') + '" style="width:100%;padding:10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;font-family:inherit"></div>'
+    + '<div style="margin-bottom:16px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:var(--gray-700)">\ud83d\udccd Address</label>'
+    + '<textarea id="setAddress" rows="2" style="width:100%;padding:10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;font-family:inherit">' + (d.address || 'Tigaon, Camarines Sur') + '</textarea></div>'
+    + '<div style="margin-bottom:16px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:var(--gray-700)">\ud83d\udd50 Business Hours</label>'
+    + '<input id="setHours" value="' + (d.bizHours || '<span id="contactHours">Mon - Sat: 8:00 AM - 6:00 PM</span>') + '" style="width:100%;padding:10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;font-family:inherit"></div>'
+    + '<div style="border-top:2px solid var(--gray-200);padding-top:16px;margin-top:8px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:var(--pink)">\ud83d\udd11 Change Admin PIN</label>'
+    + '<input id="setPin" type="password" placeholder="New 4-6 digit PIN" maxlength="6" style="width:100%;padding:10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;font-family:inherit"></div>'
+    + '<button class="btn btn-yellow" onclick="saveSettings()" style="margin-top:16px;width:100%">\ud83d\udcbe Save Settings</button>'
+    + '<div id="settingsMsg" style="font-size:13px;color:var(--success);margin-top:8px;display:none"></div>'
+    + '</div></div>';
+}
+function saveSettings() {
+  const d = getData();
+  const fb = document.getElementById('setFb').value.trim();
+  const phone = document.getElementById('setPhone').value.trim();
+  const address = document.getElementById('setAddress').value.trim();
+  const hours = document.getElementById('setHours').value.trim();
+  const newPin = document.getElementById('setPin').value.trim();
+  if (fb) d.fbPage = fb;
+  if (phone) d.phone = phone;
+  if (address) d.address = address;
+  if (hours) d.bizHours = hours;
+  if (newPin) d.adminPin = newPin;
+  saveData(d);
+  updateContactInfo();
+  const msg = document.getElementById('settingsMsg');
+  msg.textContent = newPin ? '\u2705 Settings saved! PIN changed.' : '\u2705 Settings saved!';
+  msg.style.display = 'block';
+  document.getElementById('setPin').value = '';
+  setTimeout(() => { msg.style.display = 'none'; }, 3000);
+}
+
+// ===== UPDATE CONTACT INFO =====
+function updateContactInfo() {
+  const d = getData();
+  const hp = document.getElementById('headerPhone');
+  if (hp) hp.textContent = '\ud83d\udcde ' + (d.phone || '0900-000-0000');
+  const ids = ['contactPhone','contactAddress','contactHours'];
+  const vals = [d.phone||'0900-000-0000', d.address||'Tigaon, Camarines Sur', d.bizHours||'Mon - Sat: 8:00 AM - 6:00 PM'];
+  ids.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.textContent=vals[i];});
+}
 // ===== ADMIN SERVICE MANAGEMENT =====
 function renderServicesManagement() {
   const d = getData();
