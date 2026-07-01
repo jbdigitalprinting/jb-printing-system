@@ -1174,23 +1174,29 @@ function saveSettings() {
 // ===== UPDATE CONTACT INFO =====
 function updateContactInfo() {
   const d = getData();
-  // Update phone - find the contact-card with Call/Text
+  const phone = d.phone || '0900-000-0000';
+  const address = d.address || 'Tigaon, Camarines Sur';
+  const hours = d.bizHours || 'Mon - Sat: 8:00 AM - 6:00 PM';
+  const fb = d.fbPage ? d.fbPage.replace('https://facebook.com/','@') : '@jbdigitalprinting';
   const cards = document.querySelectorAll('.contact-card');
-  cards.forEach(card => {
-    const label = card.querySelector('.contact-label');
-    if (!label) return;
-    const val = card.querySelector('.contact-value');
-    if (!val) return;
-    if (label.textContent.includes('Call') || label.textContent.includes('Text')) {
-      val.innerHTML = '<span id="contactPhone">' + (d.phone || '0900-000-0000') + '</span>';
-    }
-    if (label.textContent.includes('Location') || label.textContent.includes('Address')) {
-      val.innerHTML = '<span id="contactAddress">' + (d.address || 'Tigaon, Camarines Sur') + '</span>';
-    }
-    if (label.textContent.includes('Hours') || label.textContent.includes('Business')) {
-      val.innerHTML = '<span id="contactHours">' + (d.bizHours || 'Mon - Sat: 8:00 AM - 6:00 PM') + '</span>';
-    }
-    if (label.textContent.includes('Facebook') || label.textContent.includes('FB') || label.textContent.includes('Page')) {
+  for (let i = 0; i < cards.length; i++) {
+    const label = cards[i].querySelector('.contact-label');
+    if (!label) continue;
+    const val = cards[i].querySelector('.contact-value');
+    if (!val) continue;
+    const txt = label.textContent || '';
+    if (txt.includes('Call') || txt.includes('Text')) val.textContent = phone;
+    if (txt.includes('Location')) val.textContent = address;
+    if (txt.includes('Hours')) val.textContent = hours;
+    if (txt.includes('Facebook') || txt.includes('Page')) val.textContent = fb;
+  }
+  document.querySelectorAll('.footer-links li').forEach(function(li) {
+    const t = li.textContent || '';
+    if (t.includes('\u{1F4CD}')) li.textContent = '\u{1F4CD} ' + address;
+    if (t.includes('\u{1F4DE}')) li.textContent = '\u{1F4DE} ' + phone;
+    if (t.includes('\u{1F550}')) li.textContent = '\u{1F550} ' + hours;
+  });
+}textContent.includes('FB') || label.textContent.includes('Page')) {
       val.innerHTML = '<span id="contactFbDisplay">' + (d.fbPage ? d.fbPage.replace('https://facebook.com/','@') : '@jbdigitalprinting') + '</span>';
     }
   });
