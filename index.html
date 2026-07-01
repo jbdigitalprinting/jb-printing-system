@@ -754,7 +754,7 @@ function populateServices() {
     SERVICES.map(s => `<option value="${s.id}" data-price="${s.price}" data-unit="${s.unit}">${s.name} (₱${s.price}/${s.unit})</option>`).join('');
 }
 
-function getService(id) { return SERVICES.find(s => s.id === id); }
+function getService(id) { return getAllServices().find(s => s.id === id); }
 function calcPrice() {
   const sel = document.getElementById('ordService');
   const qty = parseInt(document.getElementById('ordQty').value) || 1;
