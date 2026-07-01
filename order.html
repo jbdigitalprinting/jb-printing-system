@@ -26,12 +26,16 @@
 }
 body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 /* HEADER */
-.header{background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;padding:16px 20px;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,.2)}
-.header-wrap{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+.header{background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;padding:16px 20px;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,.2);background-size:cover;background-position:center;background-repeat:no-repeat;min-height:60px}
+.header.has-bg{background:var(--primary);padding:0}
+.header.has-bg .header-wrap{padding:0}
+.header.has-bg #headerText{display:none}
+.header-wrap{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;width:100%}
 .header h1{font-size:20px;font-weight:700}
 .header h1 span{color:var(--accent-light)}
 .header-sub{font-size:11px;opacity:.8;margin-top:2px}
 .header-phone{font-size:13px;background:rgba(255,255,255,.15);padding:6px 12px;border-radius:20px;white-space:nowrap}
+.header.has-bg .header-phone{position:absolute;bottom:8px;right:12px;margin:0;font-size:11px;padding:4px 10px;background:rgba(0,0,0,.4)}
 /* NAV TABS */
 .nav-tabs{background:var(--card);display:flex;gap:0;overflow-x:auto;position:sticky;top:60px;z-index:99;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .nav-tabs button{flex:1;min-width:80px;padding:12px 8px;border:none;background:transparent;font-size:13px;font-weight:600;color:var(--text-light);cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap}
@@ -166,16 +170,14 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:var(--bg
 <body>
 
 <!-- HEADER -->
-<div class="header" id="mainHeader">
+<div class="header" id="mainHeader" onclick="openHeaderSettings()" title="Click to change header" style="cursor:pointer">
   <div class="header-wrap">
-    <div id="headerContent">
+    <div id="headerContent" style="flex:1">
       <!-- Text mode (default) -->
       <div id="headerText">
         <h1>JB <span>Digital Printing</span></h1>
         <div class="header-sub">Order Online — Pick Up or Delivery</div>
       </div>
-      <!-- Image mode (hidden until uploaded) -->
-      <img id="headerImage" style="display:none;max-height:60px;width:auto;border-radius:6px;cursor:pointer" onclick="openHeaderSettings()" title="Click to change header">
     </div>
     <div class="header-phone" id="headerPhone">📞 0900-000-0000</div>
   </div>
@@ -1158,14 +1160,18 @@ function restoreBuiltInProduct(id) {
 
 function renderHeader() {
   const d = getData();
-  const headerImg = document.getElementById('headerImage');
+  const header = document.getElementById('mainHeader');
   const headerText = document.getElementById('headerText');
   if (d.headerImage) {
-    headerImg.src = d.headerImage;
-    headerImg.style.display = 'block';
+    header.style.backgroundImage = 'url(' + d.headerImage + ')';
+    header.style.backgroundSize = 'cover';
+    header.style.backgroundPosition = 'center';
+    header.style.backgroundRepeat = 'no-repeat';
+    header.classList.add('has-bg');
     headerText.style.display = 'none';
   } else {
-    headerImg.style.display = 'none';
+    header.style.backgroundImage = '';
+    header.classList.remove('has-bg');
     headerText.style.display = 'block';
   }
 }
