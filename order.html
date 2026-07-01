@@ -440,7 +440,7 @@ function getData() {
     const d = JSON.parse(localStorage.getItem(STORE_KEY));
     if (d) return d;
   } catch(e) {}
-  return { orders: [], nextNum: 1, adminPin: '1234', phone: '0900-000-0000', customProducts: [] };
+  return { orders: [], nextNum: 1, adminPin: '1234', phone: '0900-000-0000', customProducts: [], hiddenProducts: [], productOverrides: {} };
 }
 function saveData(d) {
   localStorage.setItem(STORE_KEY, JSON.stringify(d));
@@ -466,11 +466,19 @@ const PRODUCTS = [
 
 function getAllProducts() {
   const d = getData();
+  const hidden = d.hiddenProducts || [];
+  const overrides = d.productOverrides || {};
+  
+  // Apply overrides to built-in products, then filter hidden
+  const builtin = PRODUCTS
+    .filter(p => !hidden.includes(p.id))
+    .map(p => overrides[p.id] ? { ...p, ...overrides[p.id], isOverridden: true } : p);
+  
   const cust = (d.customProducts || []).map(c => ({
     ...c,
     isCustom: true
   }));
-  return [...PRODUCTS, ...cust];
+  return [...builtin, ...cust];
 }
 
 function genCustomId() {
@@ -899,6 +907,8 @@ function closeManageProducts() {
 
 function renderManageProductsList() {
   const all = getAllProducts();
+  const d = getData();
+  const hidden = d.hiddenProducts || [];
   const container = document.getElementById('mpList');
 
   container.innerHTML = all.map(p => {
@@ -911,15 +921,33 @@ function renderManageProductsList() {
         <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
           ${iconHtml}
           <div>
-            <div style="font-weight:600;font-size:13px">${p.name}${isCustom ? ' <span style="color:var(--accent);font-size:11px">★</span>' : ''}</div>
+            <div style="font-weight:600;font-size:13px">${p.name}${isCustom ? ' <span style="color:var(--accent);font-size:11px">★</span>' : p.isOverridden ? ' <span style="color:var(--warning);font-size:11px">✎</span>' : ''}</div>
             <div style="font-size:11px;color:var(--text-light)">₱${p.price} / ${p.unit}</div>
           </div>
         </div>
-        ${isCustom ? `<button class="btn btn-sm btn-danger" onclick="deleteCustomProduct('${p.id}')">🗑️</button>` :
-        '<span style="font-size:11px;color:var(--text-light)">built-in</span>'}
+        <div style="display:flex;gap:4px">
+          ${!isCustom ? `<button class="btn btn-sm btn-outline" onclick="editBuiltInProduct('${p.id}')">✎</button>` : ''}
+          ${!isCustom ? `<button class="btn btn-sm btn-outline" onclick="hideBuiltInProduct('${p.id}')" style="color:var(--danger)">👁️</button>` : ''}
+          ${isCustom ? `<button class="btn btn-sm btn-danger" onclick="deleteCustomProduct('${p.id}')">🗑️</button>` : ''}
+        </div>
       </div>
     `;
   }).join('');
+  
+  // Also show hidden products section
+  if (hidden.length) {
+    container.innerHTML += '<div style="margin-top:12px;padding-top:10px;border-top:2px solid var(--gray-200)">' +
+      '<h4 style="font-size:13px;color:var(--text-light);margin-bottom:6px">Hidden Products (click to restore)</h4>' +
+      hidden.map(id => {
+        const p = PRODUCTS.find(x => x.id === id);
+        if (!p) return '';
+        return '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;opacity:.5">' +
+          '<span style="font-size:16px">' + (p.icon || '📄') + '</span>' +
+          '<span style="font-size:12px;flex:1">' + p.name + '</span>' +
+          '<button class="btn btn-sm btn-outline" onclick="restoreBuiltInProduct(\'' + id + '\')" style="font-size:11px">↩ Restore</button>' +
+          '</div>';
+      }).join('') + '</div>';
+  }
 }
 
 function addCustomProduct() {
@@ -1005,6 +1033,69 @@ function clearProductImage() {
   document.getElementById('mpImagePreview').style.display = 'none';
   document.getElementById('mpImagePreview').src = '';
   document.getElementById('mpClearImg').style.display = 'none';
+}
+
+function editBuiltInProduct(id) {
+  const d = getData();
+  const existing = (d.productOverrides || {})[id] || {};
+  const p = PRODUCTS.find(x => x.id === id);
+  if (!p) return;
+  
+  document.getElementById('modalTitle').textContent = '✎ Edit Product: ' + p.name;
+  document.getElementById('modalBody').innerHTML =
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+    '<div><label style="font-size:12px;font-weight:600">Name</label><input id="epName" value="' + (existing.name || p.name) + '" style="width:100%;padding:8px;border:2px solid var(--gray-300);border-radius:6px;font-size:13px"></div>' +
+    '<div><label style="font-size:12px;font-weight:600">Icon</label><input id="epIcon" value="' + (existing.icon || p.icon || '') + '" maxlength="4" style="width:100%;padding:8px;border:2px solid var(--gray-300);border-radius:6px;font-size:13px"></div>' +
+    '<div><label style="font-size:12px;font-weight:600">Price (₱)</label><input id="epPrice" type="number" value="' + (existing.price || p.price) + '" min="0" step="0.01" style="width:100%;padding:8px;border:2px solid var(--gray-300);border-radius:6px;font-size:13px"></div>' +
+    '<div><label style="font-size:12px;font-weight:600">Unit</label><input id="epUnit" value="' + (existing.unit || p.unit) + '" style="width:100%;padding:8px;border:2px solid var(--gray-300);border-radius:6px;font-size:13px"></div>' +
+    '</div>';
+  document.getElementById('modalBtns').innerHTML =
+    '<button class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>' +
+    '<button class="btn btn-primary btn-sm" onclick="saveBuiltInEdit(\'' + id + '\')">💾 Save</button>';
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function saveBuiltInEdit(id) {
+  const name = document.getElementById('epName').value.trim();
+  const icon = document.getElementById('epIcon').value.trim();
+  const price = parseFloat(document.getElementById('epPrice').value);
+  const unit = document.getElementById('epUnit').value.trim();
+  
+  if (!name || isNaN(price) || price <= 0 || !unit) {
+    showToast('Please fill all fields correctly', 'error');
+    return;
+  }
+  
+  const d = getData();
+  if (!d.productOverrides) d.productOverrides = {};
+  d.productOverrides[id] = { name: name, icon: icon, price: price, unit: unit };
+  saveData(d);
+  closeModal();
+  renderManageProductsList();
+  showToast('✎ ' + name + ' updated!', 'success');
+}
+
+function hideBuiltInProduct(id) {
+  const p = PRODUCTS.find(x => x.id === id);
+  if (!p) return;
+  showModal('Hide "' + p.name + '"?', 'This product will be hidden from customers. You can restore it later.', function() {
+    const d = getData();
+    if (!d.hiddenProducts) d.hiddenProducts = [];
+    if (!d.hiddenProducts.includes(id)) d.hiddenProducts.push(id);
+    saveData(d);
+    renderManageProductsList();
+    showToast('👁️ ' + p.name + ' hidden', 'success');
+  });
+}
+
+function restoreBuiltInProduct(id) {
+  const p = PRODUCTS.find(x => x.id === id);
+  if (!p) return;
+  const d = getData();
+  d.hiddenProducts = (d.hiddenProducts || []).filter(h => h !== id);
+  saveData(d);
+  renderManageProductsList();
+  showToast('↩ ' + p.name + ' restored!', 'success');
 }
 
 // ============ INIT ============
