@@ -647,6 +647,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
       <div class="admin-tabs">
         <div class="admin-tab active" onclick="switchAdminTab('orders',this)">📦 Orders</div>
         <div class="admin-tab" onclick="switchAdminTab('analytics',this)">📊 Analytics</div>
+        <div class="admin-tab" onclick="switchAdminTab('services',this)">🛍️ Services</div>
       </div>
       <!-- Orders Tab -->
       <div class="admin-section active" id="adminOrders">
@@ -661,6 +662,10 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
       <!-- Analytics Tab -->
       <div class="admin-section" id="adminAnalytics">
         <div id="analyticsContent" style="text-align:center;padding:40px;color:var(--gray-500)">Loading analytics...</div>
+      </div>
+      <!-- Services Tab -->
+      <div class="admin-section" id="adminServices">
+        <div id="servicesContent"></div>
       </div>
     </div>
   </div>
@@ -712,7 +717,7 @@ function getData() {
     const d = JSON.parse(localStorage.getItem(STORE_KEY));
     if (d) return d;
   } catch(e) {}
-  return { orders: [], nextNum: 1, adminPin: '1234', phone: '0900-000-0000' };
+  return { orders: [], nextNum: 1, adminPin: '1234', phone: '0900-000-0000', customServices: [], hiddenServices: [], serviceOverrides: {} };
 }
 function saveData(d) { localStorage.setItem(STORE_KEY, JSON.stringify(d)); }
 
@@ -738,7 +743,7 @@ const SERVICES = [
 
 function renderServices() {
   const grid = document.getElementById('servicesGrid');
-  grid.innerHTML = SERVICES.map(s => `
+  grid.innerHTML = getAllServices().map(s => `
     <div class="service-card">
       <div class="service-icon ${['yellow','pink','dark'][Math.floor(Math.random()*3)]}">${s.icon}</div>
       <h3>${s.name}</h3>
@@ -751,7 +756,16 @@ function renderServices() {
 function populateServices() {
   const sel = document.getElementById('ordService');
   sel.innerHTML = '<option value="">— Select Service —</option>' +
-    SERVICES.map(s => `<option value="${s.id}" data-price="${s.price}" data-unit="${s.unit}">${s.name} (₱${s.price}/${s.unit})</option>`).join('');
+    getAllServices().map(s => `<option value="${s.id}" data-price="${s.price}" data-unit="${s.unit}">${s.name} (₱${s.price}/${s.unit})</option>`).join('');
+}
+
+function getAllServices() {
+  const d = getData();
+  const hidden = d.hiddenServices || [];
+  const overrides = d.serviceOverrides || {};
+  const builtin = SERVICES.filter(s => !hidden.includes(s.id)).map(s => overrides[s.id] ? { ...s, ...overrides[s.id], isOverridden: true } : s);
+  const cust = (d.customServices || []).map(c => ({ ...c, isCustom: true }));
+  return [...builtin, ...cust];
 }
 
 function getService(id) { return getAllServices().find(s => s.id === id); }
@@ -1004,6 +1018,7 @@ function switchAdminTab(tab, btn) {
   btn.classList.add('active');
   document.getElementById('admin' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
   if (tab === 'analytics') renderAnalytics();
+  if (tab === 'services') renderServicesManagement();
 }
 
 function exportOrders() {
@@ -1106,6 +1121,183 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ===== ADMIN SERVICE MANAGEMENT =====
+function renderServicesManagement() {
+  const d = getData();
+  const all = getAllServices();
+  const hidden = d.hiddenServices || [];
+  
+  let html = '<div style="margin-bottom:16px;padding:16px;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg)">'
+    + '<h3 style="font-size:16px;font-weight:800;margin-bottom:12px">➕ Add Custom Service</h3>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<input id="asName" placeholder="Service name" style="padding:10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;font-family:inherit">'
+    + '<input id="asIcon" placeholder="Emoji icon" maxlength="4" style="padding:10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;font-family:inherit">'
+    + '<input id="asPrice" type="number" placeholder="Price" min="0" step="0.01" style="padding:10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;font-family:inherit">'
+    + '<input id="asUnit" placeholder="Unit (e.g., per piece)" style="padding:10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;font-family:inherit">'
+    + '<div style="grid-column:1/-1">'
+    + '<div style="position:relative;display:inline-block;width:100%">'
+    + '<input type="file" id="asImage" accept="image/png,image/jpeg,image/gif,image/webp" style="position:absolute;opacity:0;width:100%;height:100%;cursor:pointer;top:0;left:0" onchange="previewSvcImage()">'
+    + '<div style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:2px dashed var(--gray-300);border-radius:6px;font-size:12px;color:var(--gray-500);cursor:pointer;width:100%">🖼️ Upload image (optional)</div>'
+    + '</div>'
+    + '<img id="asImagePreview" style="display:none;width:48px;height:48px;object-fit:cover;border-radius:6px;margin-top:6px;border:1px solid var(--gray-200)">'
+    + '</div>'
+    + '<input id="asDesc" placeholder="Short description" style="grid-column:1/-1;padding:10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;font-family:inherit">'
+    + '</div>'
+    + '<span id="asError" style="color:var(--pink);font-size:12px;display:none"></span>'
+    + '<button class="btn btn-yellow btn-sm" onclick="addCustomServiceBtn()" style="margin-top:10px">➕ Add Service</button>'
+    + '</div>'
+    + '<h3 style="font-size:15px;font-weight:700;margin-bottom:8px">📋 Current Services</h3>';
+    
+  all.forEach(s => {
+    const isCustom = s.isCustom;
+    const over = s.isOverridden;
+    const img = s.imageData 
+      ? '<img src="' + s.imageData + '" style="width:28px;height:28px;object-fit:cover;border-radius:4px">' 
+      : '<span style="font-size:20px">' + (s.icon || '📄') + '</span>';
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;margin-bottom:4px">'
+      + img
+      + '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">' + s.name 
+      + (isCustom ? ' <span style="color:var(--yellow);font-size:10px">★</span>' : '')
+      + (over ? ' <span style="color:var(--pink);font-size:10px">✎</span>' : '')
+      + '</div><div style="font-size:11px;color:var(--gray-500)">₱' + s.price + '/' + s.unit + '</div></div>'
+      + (!isCustom ? '<button style="padding:4px 8px;font-size:11px;border:1px solid var(--gray-300);background:var(--white);border-radius:4px;cursor:pointer;margin-left:4px;font-family:inherit" onclick="editService(\'' + s.id + '\')">✎</button>' : '')
+      + (!isCustom ? '<button style="padding:4px 8px;font-size:11px;border:1px solid var(--gray-300);background:var(--white);border-radius:4px;cursor:pointer;color:var(--pink);font-family:inherit" onclick="hideService(\'' + s.id + '\')">👁️</button>' : '')
+      + (isCustom ? '<button style="padding:4px 8px;font-size:11px;border:none;background:rgba(233,69,96,.1);color:var(--pink);border-radius:4px;cursor:pointer;font-family:inherit" onclick="deleteCustomService(\'' + s.id + '\')">🗑️</button>' : '')
+      + '</div>';
+  });
+  
+  if (hidden.length) {
+    html += '<div style="margin-top:12px;padding-top:10px;border-top:2px solid var(--gray-200)"><div style="font-size:12px;color:var(--gray-500);margin-bottom:6px;font-weight:600">🔒 Hidden Services (click to restore):</div>';
+    hidden.forEach(id => {
+      const p = SERVICES.find(x => x.id === id);
+      if (p) html += '<button style="padding:4px 10px;font-size:11px;border:1px dashed var(--gray-300);background:transparent;border-radius:4px;cursor:pointer;margin:2px;font-family:inherit" onclick="restoreService(\'' + id + '\')">↩ ' + p.icon + ' ' + p.name + '</button>';
+    });
+    html += '</div>';
+  }
+  
+  document.getElementById('servicesContent').innerHTML = html;
+}
+
+function editService(id) {
+  const d = getData();
+  const over = d.serviceOverrides || {};
+  const existing = over[id] || {};
+  const p = SERVICES.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('modalTitle').textContent = '✎ Edit: ' + p.name;
+  document.getElementById('modalBody').innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    + '<div><label style="font-size:11px;font-weight:600;color:var(--gray-700)">Name</label><input id="esName" value="' + (existing.name || p.name) + '" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px"></div>'
+    + '<div><label style="font-size:11px;font-weight:600;color:var(--gray-700)">Icon</label><input id="esIcon" value="' + (existing.icon || p.icon || '') + '" maxlength="4" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px"></div>'
+    + '<div><label style="font-size:11px;font-weight:600;color:var(--gray-700)">Price (₱)</label><input id="esPrice" type="number" value="' + (existing.price || p.price) + '" min="0" step="0.01" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px"></div>'
+    + '<div><label style="font-size:11px;font-weight:600;color:var(--gray-700)">Unit</label><input id="esUnit" value="' + (existing.unit || p.unit) + '" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px"></div>'
+    + '<div style="grid-column:1/-1"><label style="font-size:11px;font-weight:600;color:var(--gray-700)">Description</label><textarea id="esDesc" rows="2" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px;font-family:inherit">' + (existing.desc || p.desc || '') + '</textarea></div>'
+    + '</div>';
+  document.getElementById('modalBtns').innerHTML = '<button class="btn btn-dark btn-sm" onclick="closeModal()">Cancel</button><button class="btn btn-yellow btn-sm" onclick="saveServiceEdit(\'' + id + '\')">💾 Save</button>';
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function saveServiceEdit(id) {
+  const name = document.getElementById('esName').value.trim();
+  const icon = document.getElementById('esIcon').value.trim();
+  const price = parseFloat(document.getElementById('esPrice').value);
+  const unit = document.getElementById('esUnit').value.trim();
+  const desc = document.getElementById('esDesc').value.trim();
+  if (!name || isNaN(price) || price <= 0 || !unit) { showToast('Fill all fields', 'error'); return; }
+  const d = getData();
+  if (!d.serviceOverrides) d.serviceOverrides = {};
+  d.serviceOverrides[id] = { name, icon, price, unit, desc };
+  saveData(d);
+  closeModal();
+  renderServicesManagement();
+  renderServices();
+  populateServices();
+  showToast('✓ ' + name + ' saved!', 'success');
+}
+
+function hideService(id) {
+  const p = SERVICES.find(x => x.id === id);
+  if (!p) return;
+  showModal('Hide "' + p.name + '"?', "Customers won't see this service. You can restore it later.", function() {
+    const d = getData();
+    if (!d.hiddenServices) d.hiddenServices = [];
+    if (!d.hiddenServices.includes(id)) d.hiddenServices.push(id);
+    saveData(d);
+    renderServicesManagement();
+    renderServices();
+    populateServices();
+    showToast('👁️ Hidden', 'success');
+  });
+}
+
+function restoreService(id) {
+  const d = getData();
+  d.hiddenServices = (d.hiddenServices || []).filter(h => h !== id);
+  saveData(d);
+  renderServicesManagement();
+  renderServices();
+  populateServices();
+  showToast('↩ Restored!', 'success');
+}
+
+function deleteCustomService(id) {
+  const d = getData();
+  const p = (d.customServices || []).find(x => x.id === id);
+  if (!p) return;
+  showModal('Delete "' + p.name + '"?', 'This permanently removes the custom service.', function() {
+    d.customServices = d.customServices.filter(x => x.id !== id);
+    saveData(d);
+    renderServicesManagement();
+    renderServices();
+    populateServices();
+    showToast('🗑️ Deleted', 'success');
+  });
+}
+
+function addCustomServiceBtn() {
+  const name = document.getElementById('asName').value.trim();
+  const icon = document.getElementById('asIcon').value.trim() || '📄';
+  const price = parseFloat(document.getElementById('asPrice').value);
+  const unit = document.getElementById('asUnit').value.trim();
+  const desc = document.getElementById('asDesc').value.trim();
+  const err = document.getElementById('asError');
+  const fi = document.getElementById('asImage');
+  if (!name || isNaN(price) || price <= 0 || !unit) { err.textContent = 'Name, Price, Unit required'; err.style.display = 'block'; return; }
+  err.style.display = 'none';
+  if (fi.files.length) {
+    const r = new FileReader();
+    r.onload = function(e) { finishAddService(name, icon, price, unit, desc, e.target.result); };
+    r.readAsDataURL(fi.files[0]);
+  } else {
+    finishAddService(name, icon, price, unit, desc, null);
+  }
+}
+
+function finishAddService(name, icon, price, unit, desc, img) {
+  const d = getData();
+  if (!d.customServices) d.customServices = [];
+  d.customServices.push({ id: 'cust_' + Date.now().toString(36), name, icon: icon || '📄', price, unit, desc, imageData: img, orders: 0, rating: 5 });
+  saveData(d);
+  ['asName', 'asIcon', 'asPrice', 'asUnit', 'asDesc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('asImage').value = '';
+  document.getElementById('asImagePreview').style.display = 'none';
+  renderServicesManagement();
+  renderServices();
+  populateServices();
+  showToast('✓ ' + name + ' added!', 'success');
+}
+
+function previewSvcImage() {
+  const f = document.getElementById('asImage').files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = function(e) {
+    document.getElementById('asImagePreview').src = e.target.result;
+    document.getElementById('asImagePreview').style.display = 'block';
+  };
+  r.readAsDataURL(f);
+}
+
 </script>
 </body>
 </html>
