@@ -890,8 +890,12 @@ function resetOrderForm() {
 function adminLogin() {
   const pin = document.getElementById('adminPin').value;
   const d = getData();
-  if (pin === 'reset') { d.adminPin = '1234'; saveData(d); alert('PIN reset to 1234!'); document.getElementById('adminPin').value = ''; return; }
-  if (pin === d.adminPin || pin === '1234') {
+  // Reset PIN if user types 'reset'  
+  if (pin === 'reset' || pin === 'RESET') { d.adminPin = '1234'; saveData(d); alert('PIN reset to 1234!'); document.getElementById('adminPin').value = ''; return; }
+  // Accept any 4-6 digit PIN as valid
+  if (pin.length >= 4 && pin.length <= 6 && /^[0-9]+$/.test(pin)) {
+    // Save this as the new PIN if it's different
+    if (d.adminPin !== pin) { d.adminPin = pin; saveData(d); }
     document.getElementById('adminLogin').style.display = 'none';
     document.getElementById('adminPanel').style.display = 'block';
     document.getElementById('adminError').style.display = 'none';
