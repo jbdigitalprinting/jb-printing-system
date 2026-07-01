@@ -877,6 +877,7 @@ function openManageProducts() {
   document.getElementById('mpIcon').value = '';
   document.getElementById('mpPrice').value = '';
   document.getElementById('mpUnit').value = '';
+  clearProductImage();
   document.getElementById('productsOverlay').classList.add('show');
 }
 function closeManageProducts() {
@@ -887,15 +888,17 @@ function closeManageProducts() {
 
 function renderManageProductsList() {
   const all = getAllProducts();
-  const d = getData();
   const container = document.getElementById('mpList');
 
   container.innerHTML = all.map(p => {
     const isCustom = p.isCustom;
+    const iconHtml = p.imageData
+      ? `<img src="${p.imageData}" alt="${p.name}" style="width:32px;height:32px;object-fit:cover;border-radius:6px">`
+      : `<span style="font-size:20px">${p.icon || '📄'}</span>`;
     return `
       <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid var(--gray-200);gap:8px">
         <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
-          <span style="font-size:20px">${p.icon || '📄'}</span>
+          ${iconHtml}
           <div>
             <div style="font-weight:600;font-size:13px">${p.name}${isCustom ? ' <span style="color:var(--accent);font-size:11px">★</span>' : ''}</div>
             <div style="font-size:11px;color:var(--text-light)">₱${p.price} / ${p.unit}</div>
@@ -914,19 +917,37 @@ function addCustomProduct() {
   const price = parseFloat(document.getElementById('mpPrice').value);
   const unit = document.getElementById('mpUnit').value.trim();
   const err = document.getElementById('mpError');
+  const fileInput = document.getElementById('mpImage');
 
   if (!name) { err.textContent = 'Product name is required'; err.style.display = 'inline'; return; }
   if (isNaN(price) || price <= 0) { err.textContent = 'Enter a valid price'; err.style.display = 'inline'; return; }
   if (!unit) { err.textContent = 'Unit is required (e.g. per piece)'; err.style.display = 'inline'; return; }
 
   err.style.display = 'none';
+
+  if (fileInput.files.length) {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      finishAddProduct(name, icon, price, unit, ev.target.result);
+    };
+    reader.onerror = function() {
+      finishAddProduct(name, icon, price, unit, null);
+    };
+    reader.readAsDataURL(fileInput.files[0]);
+  } else {
+    finishAddProduct(name, icon, price, unit, null);
+  }
+}
+
+function finishAddProduct(name, icon, price, unit, imageData) {
   const d = getData();
   d.customProducts.push({
     id: genCustomId(),
     name: name,
     icon: icon,
     price: price,
-    unit: unit
+    unit: unit,
+    imageData: imageData
   });
   saveData(d);
   renderManageProductsList();
@@ -937,6 +958,7 @@ function addCustomProduct() {
   document.getElementById('mpIcon').value = '';
   document.getElementById('mpPrice').value = '';
   document.getElementById('mpUnit').value = '';
+  clearProductImage();
 }
 
 function deleteCustomProduct(id) {
@@ -949,6 +971,29 @@ function deleteCustomProduct(id) {
     renderManageProductsList();
     showToast('🗑️ ' + product.name + ' deleted', 'success');
   });
+}
+
+function previewProductImage() {
+  const file = document.getElementById('mpImage').files[0];
+  if (!file) return;
+  if (file.size > 500 * 1024) {
+    showToast('Image too large. Max 500KB.', 'error');
+    document.getElementById('mpImage').value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('mpImagePreview').src = e.target.result;
+    document.getElementById('mpImagePreview').style.display = 'block';
+    document.getElementById('mpClearImg').style.display = 'inline-block';
+  };
+  reader.readAsDataURL(file);
+}
+function clearProductImage() {
+  document.getElementById('mpImage').value = '';
+  document.getElementById('mpImagePreview').style.display = 'none';
+  document.getElementById('mpImagePreview').src = '';
+  document.getElementById('mpClearImg').style.display = 'none';
 }
 
 // ============ INIT ============
